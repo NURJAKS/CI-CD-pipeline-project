@@ -1,6 +1,5 @@
 name: NestJS CI/CD Pipeline
 
-# 1. ТРИГГЕР: Пайплайн запускается только при пуше в ветку main
 on:
   push:
     branches:
@@ -8,61 +7,80 @@ on:
 
 jobs:
   # ==========================================
-  # ЭТАП 1: НЕПРЕРЫВНАЯ ИНТЕГРАЦИЯ (CI)
+  # ЭТАП 1: CI (ТЕСТЫ)
   # ==========================================
   test:
     name: 🧪 Build & Test
-    # Запускается на бесплатных облачных серверах GitHub (Ubuntu)
     runs-on: ubuntu-latest
-
     steps:
-      # Шаг 1.1: Клонирование кода из репозитория
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Шаг 1.2: Установка нужной версии Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # Шаг 1.3: Установка зависимостей проекта
       - name: Install Dependencies
         run: npm install
 
-      # Шаг 1.4: Запуск E2E тестов (авто-тестировщик)
       - name: Run E2E Tests
         run: npm run test:e2e
 
-
   # ==========================================
-  # ЭТАП 2: НЕПРЕРЫВНАЯ ДОСТАВКА (CD)
+  # ЭТАП 2: CD (ДЕПЛОЙ)
   # ==========================================
   deploy:
     name: 🚀 Deploy to Local Laptop
-    # Этот этап ждет, пока успешно завершится этап 'test'
     needs: test
-    # А вот это отправляет команду на твой ноутбук!
     runs-on: self-hosted
-
     steps:
-      # Шаг 2.1: Раннер скачивает свежий код на твой ноутбук (в папку _work)
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Шаг 2.2: Сборка Docker-образа (выполняется у тебя в терминале)
       - name: Build Docker Image
         run: docker build -t cicd-nest-api .
 
-      # Шаг 2.3: Остановка старой версии
       - name: Stop Old Container
-        # Команда || true значит "если упадет с ошибкой (например, контейнера нет), игнорируй и иди дальше"
         run: docker stop nest_container || true
 
-      # Шаг 2.4: Удаление старой версии
       - name: Remove Old Container
         run: docker rm nest_container || true
 
-      # Шаг 2.5: Запуск новой версии!
       - name: Start New Container
         run: docker run -d -p 3000:3000 --name nest_container cicd-nest-api
+
+  # ==========================================
+  # ЭТАП 3: УВЕДОМЛЕНИЯ В TELEGRAM
+  # ==========================================
+  notify:
+    name: 📢 Telegram Notify
+    needs: [test, deploy]
+    # Важно: запускать всегда, даже если предыдущие шаги упали с ошибкой
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      # Отправляем при успехе
+      - name: Send Success Message
+        if: ${{ needs.test.result == 'success' && needs.deploy.result == 'success' }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ✅ Ура! Новая версия успешно развернута!
+            📝 Коммит: ${{ github.event.head_commit.message }}
+            👨‍💻 Автор: ${{ github.actor }}
+
+      # Отправляем при провале тестов или деплоя
+      - name: Send Failure Message
+        if: ${{ needs.test.result == 'failure' || needs.deploy.result == 'failure' }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ❌ Внимание! Пайплайн упал с ошибкой.
+            Тесты: ${{ needs.test.result }}
+            Деплой: ${{ needs.deploy.result }}
+            📝 Коммит: ${{ github.event.head_commit.message }}
