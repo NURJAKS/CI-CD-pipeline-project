@@ -1,98 +1,238 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS Automated CI/CD Pipeline & Delivery Engine
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> High-reliability automated CI/CD pipeline for NestJS microservices featuring automated E2E testing, Docker containerization, continuous deployment via GitHub Actions self-hosted runners, and real-time Telegram operational alerting.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+[![CI/CD Pipeline](https://github.com/NURJAKS/CI-CD-pipeline-project/actions/workflows/main.yml/badge.svg)](https://github.com/NURJAKS/CI-CD-pipeline-project/actions/workflows/main.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?style=flat&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-10.x-E0234E?style=flat&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-Automated-2088FF?style=flat&logo=github-actions&logoColor=white)](https://github.com/features/actions)
+[![Telegram](https://img.shields.io/badge/Telegram-Notifications-2CA5E0?style=flat&logo=telegram&logoColor=white)](https://core.telegram.org/bots)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Pitch & Executive Summary
 
-## Project setup
+In modern cloud-native architectures, manual deployments and unmonitored code integrations introduce high operational risk: untested regressions slip into runtime environments, service restarts cause prolonged downtime, and engineers remain blind to pipeline failures until customers report outages.
 
-```bash
-$ npm install
+**NestJS CI/CD Pipeline Engine** eliminates manual overhead through a fully automated, multi-stage delivery pipeline:
+- **Strict Quality Gates**: Every code push automatically executes Jest and Supertest E2E integration suites inside an isolated Ubuntu runtime.
+- **Continuous Containerized Delivery**: Verified builds trigger an automated CD workflow executing on target host infrastructure via a GitHub Actions Self-Hosted Runner.
+- **Zero Configuration Drift**: The target application is rebuilt into a hardened, lightweight Docker container (`node:20-alpine`) with clean container lifecycle recycling.
+- **Instant Telemetry**: Build outcomes, commit metadata, and failure traces are dispatched in real time to engineering channels via an automated Telegram Bot.
+
+---
+
+## Architecture & Pipeline Flow
+
+The workflow enforces a strict three-tier lifecycle (`Test` $\rightarrow$ `Deploy` $\rightarrow$ `Notify`):
+
+```mermaid
+flowchart TD
+    subgraph VCS ["1. VCS & Trigger"]
+        Developer["👨‍💻 Developer Push"] -->|git push origin main| Repo["🐙 GitHub Repository"]
+        Repo -->|Trigger webhook| Workflow["⚙️ GitHub Actions Workflow (.github/workflows/main.yml)"]
+    end
+
+    subgraph CI ["2. Automated Quality Gate (CI)"]
+        Workflow --> JobTest["🧪 Job: Build & Test\n(runs-on: ubuntu-latest)"]
+        JobTest --> StepSetup["Checkout Code & Setup Node.js 20"]
+        StepSetup --> StepDeps["Install Dependencies (npm install)"]
+        StepDeps --> StepE2E["Execute E2E Integration Suite (npm run test:e2e)"]
+    end
+
+    subgraph CD ["3. Continuous Deployment (CD)"]
+        StepE2E -->|Success: Passed Quality Gate| JobDeploy["🚀 Job: Deploy to Host\n(runs-on: self-hosted)"]
+        JobDeploy --> StepCheckoutHost["Checkout Source on Target Host"]
+        StepCheckoutHost --> StepBuildDocker["Build Image: cicd-nest-api (node:20-alpine)"]
+        StepBuildDocker --> StepCycleContainer["Stop & Remove Old Container (nest_container)"]
+        StepCycleContainer --> StepRunContainer["Run New Container (-p 3000:3000)"]
+    end
+
+    subgraph Telemetry ["4. Operational Telemetry & Alerting"]
+        JobTest -.->|Always Run (needs: [test, deploy])| JobNotify["📢 Job: Telegram Notify\n(runs-on: ubuntu-latest)"]
+        JobDeploy -.->|Always Run| JobNotify
+        JobNotify --> EvaluateOutcome{"Pipeline Status?"}
+        EvaluateOutcome -->|All Succeeded| MsgSuccess["✅ Success Alert:\nCommit message & Actor"]
+        EvaluateOutcome -->|Any Stage Failed| MsgFailure["❌ Failure Alert:\nFailed stage diagnosis & Commit"]
+        MsgSuccess --> TelegramBot["📱 Telegram Channel / Bot Notification"]
+        MsgFailure --> TelegramBot
+    end
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## Pipeline Stages Breakdown
 
-# watch mode
-$ npm run start:dev
+| Stage | Name | Runner Environment | Key Actions & Responsibilities |
+| :--- | :--- | :--- | :--- |
+| **01. CI** | `🧪 Build & Test` | `ubuntu-latest` (Cloud) | Checkouts branch, initializes Node.js 20, resolves dependency tree, executes automated Supertest E2E tests validating HTTP status contracts. |
+| **02. CD** | `🚀 Deploy to Local Laptop` | `self-hosted` (Bare Metal / Host) | Triggers only upon CI success. Builds multi-stage production Docker image, executes zero-drift container recycling, binds to host port `3000`. |
+| **03. Notify** | `📢 Telegram Notify` | `ubuntu-latest` (Cloud) | Executes unconditionally (`if: always()`). Dispatches structured Telegram alerts with execution status, commit title, and author info via `appleboy/telegram-action`. |
 
-# production mode
-$ npm run start:prod
+---
+
+## Tech Stack & Ecosystem
+
+- **Backend Framework**: [NestJS 10](https://nestjs.com/) (TypeScript)
+- **Runtime**: [Node.js 20 LTS](https://nodejs.org/)
+- **Testing Engine**: [Jest](https://jestjs.io/) & [Supertest](https://github.com/ladjs/supertest)
+- **Containerization**: [Docker](https://www.docker.com/) (Multi-stage `node:20-alpine`) & [Docker Compose](https://docs.docker.com/compose/)
+- **Automation / Orchestrator**: [GitHub Actions](https://github.com/features/actions) with Self-Hosted Runner integration
+- **Operational Alerting**: [Telegram Bot API](https://core.telegram.org/bots) (`appleboy/telegram-action`)
+
+---
+
+## Directory Structure
+
+```
+CI-CD-pipeline-project/
+├── .github/
+│   └── workflows/
+│       └── main.yml           # Complete 3-stage CI/CD pipeline definition
+├── src/
+│   ├── app.controller.ts      # Healthcheck & API status endpoint
+│   ├── app.controller.spec.ts # Controller unit test suite
+│   ├── app.module.ts          # Core application module definition
+│   ├── app.service.ts         # Business logic layer
+│   └── main.ts                # Application bootstrap entry point
+├── test/
+│   ├── app.e2e-spec.ts        # End-to-end integration test suite
+│   └── jest-e2e.json          # E2E test runner configuration
+├── docker-compose.yml         # Local infrastructure (PostgreSQL service)
+├── Dockerfile                 # Optimized multi-stage Docker build
+├── .dockerignore              # Build context exclusion rules
+├── nest-cli.json              # NestJS CLI schema configuration
+├── package.json               # Scripts and production/dev dependencies
+├── tsconfig.json              # TypeScript compiler configuration
+└── README.md                  # Architecture & deployment documentation
 ```
 
-## Run tests
+---
+
+## Quickstart & Local Development
+
+### 1. Prerequisites
+
+- [Node.js](https://nodejs.org/) 20.x or later
+- [Docker](https://www.docker.com/) & Docker Compose
+- [Git](https://git-scm.com/)
+
+### 2. Installation & Running Locally
 
 ```bash
-# unit tests
-$ npm run test
+# Clone the repository
+git clone https://github.com/NURJAKS/CI-CD-pipeline-project.git
+cd CI-CD-pipeline-project
 
-# e2e tests
-$ npm run test:e2e
+# Install dependencies
+npm install
 
-# test coverage
-$ npm run test:cov
+# Start in development mode with hot reload
+npm run start:dev
 ```
 
-## Deployment
+The service will be accessible at: `http://localhost:3000/` returning:
+```json
+{
+  "status": "v1.0",
+  "message": "CI/CD works!"
+}
+```
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 3. Running Test Suites
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Run unit tests
+npm run test
+
+# Run E2E integration test suite
+npm run test:e2e
+
+# Generate test coverage reports
+npm run test:cov
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## Docker Deployment
 
-Check out a few resources that may come in handy when working with NestJS:
+### Manual Docker Build & Run
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+# Build the container image
+docker build -t cicd-nest-api .
 
-## Support
+# Run the containerized service
+docker run -d -p 3000:3000 --name nest_container cicd-nest-api
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# Inspect container logs
+docker logs -f nest_container
+```
 
-## Stay in touch
+### Local Database Environment (Docker Compose)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+# Launch background PostgreSQL service
+docker compose up -d
+
+# Verify container status
+docker compose ps
+```
+
+---
+
+## CI/CD Pipeline Configuration
+
+### 1. Setting Up the Self-Hosted Runner
+
+To enable continuous deployment to your target host/server:
+1. Navigate to **GitHub Repository** $\rightarrow$ **Settings** $\rightarrow$ **Actions** $\rightarrow$ **Runners**.
+2. Click **New self-hosted runner** and select the host operating system (`Linux x64`).
+3. Download, configure, and register the runner agent with the generated token:
+   ```bash
+   # Create runner folder and unpack
+   mkdir actions-runner && cd actions-runner
+   curl -o actions-runner-linux-x64.tar.gz -L https://github.com/actions/runner/releases/download/...
+   tar xzf actions-runner-linux-x64.tar.gz
+
+   # Configure and connect
+   ./config.sh --url https://github.com/NURJAKS/CI-CD-pipeline-project --token <REGISTRATION_TOKEN>
+   ./run.sh
+   ```
+
+### 2. Configuring Telegram Alerts
+
+Add the following encrypted secrets under **GitHub Repository** $\rightarrow$ **Settings** $\rightarrow$ **Secrets and variables** $\rightarrow$ **Actions**:
+
+| Secret Name | Description | Source / How to Obtain |
+| :--- | :--- | :--- |
+| `TELEGRAM_BOT_TOKEN` | API token for your Telegram alerting bot | Generated via [@BotFather](https://t.me/BotFather) |
+| `TELEGRAM_CHAT_ID` | Numeric Chat ID of developer or channel | Obtained via [@userinfobot](https://t.me/userinfobot) or API |
+
+---
+
+## Telegram Notification Format
+
+### ✅ Success Notification Example
+```text
+✅ Ура! Новая версия успешно развернута!
+📝 Коммит: feat: optimize dockerfile and update endpoint contracts
+👨‍💻 Автор: NURJAKS
+```
+
+### ❌ Failure Notification Example
+```text
+❌ Внимание! Пайплайн упал с ошибкой.
+Тесты: failure
+Деплой: skipped
+📝 Коммит: fix: update test expectations
+```
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is open-source software licensed under the [MIT License](LICENSE).
